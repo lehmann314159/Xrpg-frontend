@@ -1,6 +1,6 @@
 import { ToolResult, MCPTool } from "./types";
 
-const BACKEND_URL = process.env.BACKEND_URL || "http://localhost:8080";
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8080";
 
 export class MCPClientError extends Error {
   constructor(

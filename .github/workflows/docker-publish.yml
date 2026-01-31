@@ -31,7 +31,7 @@ jobs:
           context: .
           push: true
           build-args: |
-            BACKEND_URL=https://xrpg-backend.verynormalserver.com
+            NEXT_PUBLIC_BACKEND_URL=https://xrpg-backend.verynormalserver.com
           tags: |
             ${{ env.IMAGE_NAME }}:latest
             ${{ env.IMAGE_NAME }}:${{ github.sha }}
