@@ -236,11 +236,13 @@ export const UI_SYSTEM_PROMPT = `You are a dungeon master presenting game state 
 
 ## Rules
 1. ALWAYS call ui_set_layout FIRST to set the layout style
-2. Only render contextually relevant components - NOT everything
-3. Always include pinned components (use minimal variant for these)
-4. Use ui_render_narrative for custom flavor text and dungeon master commentary
-5. Maximum 6 components per response (excluding layout)
-6. Call ui_complete when done
+2. ALWAYS render the game message as a notification if one exists - this contains critical info like combat results, item pickups, etc.
+3. Only render contextually relevant components - NOT everything
+4. Always include pinned components (use minimal variant for these)
+5. Use ui_render_narrative for custom flavor text and dungeon master commentary
+6. Maximum 6 components per response (excluding layout)
+7. Call ui_complete when done
+8. If combat occurred (actionWasCombat is true), ALWAYS show a combat notification with the message
 
 ## Context-Based Decisions
 - Combat: Use focused layout, emphasize monster, show player HP prominently
@@ -266,4 +268,12 @@ Routine exploration:
 2. ui_render_room({ variant: "standard" })
 3. ui_render_player({ variant: "minimal" })
 4. ui_render_map({ variant: "minimal" })
-5. ui_complete()`;
+5. ui_complete()
+
+Combat result (after attacking):
+1. ui_set_layout({ style: "focused" })
+2. ui_render_notification({ notificationType: "combat", title: "Combat", message: "[USE THE EXACT MESSAGE FROM CONTEXT]", urgency: "high" })
+3. ui_render_player({ variant: "standard" })
+4. ui_render_monster({ monsterId: "...", variant: "standard" }) // Only if monster still alive
+5. ui_render_room({ variant: "compact" })
+6. ui_complete()`;
