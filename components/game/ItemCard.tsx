@@ -1,4 +1,4 @@
-import { ItemView } from "@/lib/types";
+import { ItemView, ComponentVariant } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -11,11 +11,13 @@ import {
   Package,
   Hand,
   CheckCircle,
+  Sparkles,
 } from "lucide-react";
 
 interface ItemCardProps {
   item: ItemView;
   location: "room" | "inventory";
+  variant?: ComponentVariant;
   onTake?: (itemId: string) => void;
   onUse?: (itemId: string) => void;
   onEquip?: (itemId: string) => void;
@@ -41,6 +43,7 @@ const typeColors: Record<ItemView["type"], string> = {
 export function ItemCard({
   item,
   location,
+  variant = "standard",
   onTake,
   onUse,
   onEquip,
@@ -52,6 +55,118 @@ export function ItemCard({
   const canEquip = item.type === "weapon" || item.type === "armor";
   const canUse = item.type === "consumable";
 
+  // Compact variant - minimal inline display
+  if (variant === "compact") {
+    return (
+      <div className={cn("flex items-center gap-2", className)}>
+        <Icon className={cn("h-4 w-4 flex-shrink-0", iconColor)} />
+        <span className="font-medium truncate">{item.name}</span>
+        {item.isEquipped && <CheckCircle className="h-3 w-3 text-green-400 flex-shrink-0" />}
+        <div className="flex gap-1 ml-auto text-xs">
+          {item.damage && item.damage > 0 && <span className="text-orange-400">+{item.damage}</span>}
+          {item.armor && item.armor > 0 && <span className="text-blue-400">+{item.armor}</span>}
+          {item.healing && item.healing > 0 && <span className="text-green-400">+{item.healing}</span>}
+        </div>
+      </div>
+    );
+  }
+
+  // Dramatic variant - emphasized for rare/important items
+  if (variant === "dramatic") {
+    return (
+      <div className={cn("space-y-3", className)}>
+        {/* Header with sparkle effect */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Icon className={cn("h-7 w-7", iconColor)} />
+              <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-yellow-400 animate-pulse" />
+            </div>
+            <div>
+              <h3 className="font-bold text-lg">{item.name}</h3>
+              <span className="text-xs text-yellow-400 uppercase tracking-wide">Notable Item</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-1">
+            {item.isEquipped && (
+              <Badge variant="success" className="gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Equipped
+              </Badge>
+            )}
+            <Badge variant="secondary" className="capitalize text-sm">
+              {item.type}
+            </Badge>
+          </div>
+        </div>
+
+        {/* Description - more prominent */}
+        <p className="text-sm leading-relaxed border-l-2 border-yellow-600/50 pl-3">
+          {item.description}
+        </p>
+
+        {/* Stats - larger display */}
+        <div className="flex flex-wrap gap-3">
+          {item.damage && item.damage > 0 && (
+            <div className="flex items-center gap-2 rounded-lg bg-orange-900/30 px-3 py-2 border border-orange-600/30">
+              <Sword className="h-5 w-5 text-orange-400" />
+              <div>
+                <div className="text-xs text-muted-foreground">Damage</div>
+                <div className="font-bold text-lg">+{item.damage}</div>
+              </div>
+            </div>
+          )}
+          {item.armor && item.armor > 0 && (
+            <div className="flex items-center gap-2 rounded-lg bg-blue-900/30 px-3 py-2 border border-blue-600/30">
+              <Shield className="h-5 w-5 text-blue-400" />
+              <div>
+                <div className="text-xs text-muted-foreground">Defense</div>
+                <div className="font-bold text-lg">+{item.armor}</div>
+              </div>
+            </div>
+          )}
+          {item.healing && item.healing > 0 && (
+            <div className="flex items-center gap-2 rounded-lg bg-green-900/30 px-3 py-2 border border-green-600/30">
+              <FlaskConical className="h-5 w-5 text-green-400" />
+              <div>
+                <div className="text-xs text-muted-foreground">Healing</div>
+                <div className="font-bold text-lg">+{item.healing}</div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Actions - larger buttons */}
+        <div className="flex gap-2">
+          {location === "room" && onTake && (
+            <Button variant="secondary" size="lg" className="flex-1" onClick={() => onTake(item.id)}>
+              <Hand className="h-5 w-5 mr-2" />
+              Take {item.name}
+            </Button>
+          )}
+          {location === "inventory" && canUse && onUse && (
+            <Button variant="default" size="lg" className="flex-1" onClick={() => onUse(item.id)}>
+              <FlaskConical className="h-5 w-5 mr-2" />
+              Use
+            </Button>
+          )}
+          {location === "inventory" && canEquip && !item.isEquipped && onEquip && (
+            <Button variant="secondary" size="lg" className="flex-1" onClick={() => onEquip(item.id)}>
+              <CheckCircle className="h-5 w-5 mr-2" />
+              Equip
+            </Button>
+          )}
+        </div>
+
+        {/* Item ID */}
+        <div className="text-xs text-muted-foreground font-mono">
+          ID: {item.id}
+        </div>
+      </div>
+    );
+  }
+
+  // Standard variant (default)
   return (
     <div className={cn("space-y-2", className)}>
       {/* Header */}

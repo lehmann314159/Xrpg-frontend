@@ -1,9 +1,10 @@
-import { MapCell } from "@/lib/types";
+import { MapCell, ComponentVariant } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { User, DoorOpen, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from "lucide-react";
 
 interface DungeonMapProps {
   mapGrid: MapCell[][];
+  variant?: ComponentVariant;
   className?: string;
 }
 
@@ -22,7 +23,7 @@ const exitArrows: Record<string, typeof ArrowUp> = {
   west: ArrowLeft,
 };
 
-export function DungeonMap({ mapGrid, className }: DungeonMapProps) {
+export function DungeonMap({ mapGrid, variant = "standard", className }: DungeonMapProps) {
   if (!mapGrid || mapGrid.length === 0) {
     return (
       <div className={cn("flex items-center justify-center text-muted-foreground", className)}>
@@ -34,6 +35,36 @@ export function DungeonMap({ mapGrid, className }: DungeonMapProps) {
   // Reverse rows so north (higher Y) is at the top
   const flippedGrid = [...mapGrid].reverse();
 
+  // Minimal variant - smaller cells, no legend
+  if (variant === "minimal") {
+    return (
+      <div className={cn("flex flex-col gap-0.5", className)}>
+        {flippedGrid.map((row, idx) => (
+          <div key={idx} className="flex gap-0.5 justify-center">
+            {row.map((cell) => (
+              <div
+                key={`${cell.x}-${cell.y}`}
+                className={cn(
+                  "relative w-6 h-6 rounded-sm border flex items-center justify-center",
+                  statusColors[cell.status]
+                )}
+              >
+                {cell.hasPlayer && <User className="h-3 w-3 text-primary" />}
+                {cell.status === "exit" && !cell.hasPlayer && (
+                  <DoorOpen className="h-2.5 w-2.5 text-green-400" />
+                )}
+                {cell.status === "visited" && !cell.hasPlayer && (
+                  <div className="w-1 h-1 rounded-full bg-muted-foreground/50" />
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  // Standard variant (default)
   return (
     <div className={cn("flex flex-col gap-1", className)}>
       {flippedGrid.map((row, idx) => (

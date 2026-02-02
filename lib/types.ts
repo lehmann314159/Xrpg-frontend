@@ -129,3 +129,46 @@ export interface MCPTool {
     required?: string[];
   };
 }
+
+// Generative UI Types
+
+export type LayoutStyle = "standard" | "focused" | "cinematic" | "dense";
+
+export type ComponentVariant = "standard" | "dramatic" | "compact" | "atmospheric" | "minimal";
+
+export type NarrativeMood = "neutral" | "tense" | "triumphant" | "mysterious" | "dangerous";
+
+// Summarized game context for Phase 2 UI generation (token-optimized)
+export interface UIContext {
+  hp: number;
+  maxHp: number;
+  isInDanger: boolean;
+  roomName: string;
+  roomIsExit: boolean;
+  monsterCount: number;
+  hasStrongMonster: boolean;
+  itemCount: number;
+  lastAction: string;
+  actionWasCombat: boolean;
+  message: string;
+  isVictory: boolean;
+  isGameOver: boolean;
+  pinnedTypes: ComponentType[];
+}
+
+// UI component that has been rendered by AI
+export interface UIComponent {
+  type: "layout" | "notification" | "room" | "player" | "monster" | "item" | "map" | "equipment" | "inventory" | "narrative";
+  variant?: ComponentVariant;
+  mood?: NarrativeMood;
+  emphasis?: boolean;
+  urgency?: "low" | "normal" | "high" | "critical";
+  data?: unknown;
+  text?: string;
+  style?: LayoutStyle;
+}
+
+// Result from UI tool execution
+export interface UIToolResult {
+  component: UIComponent;
+}
