@@ -12,7 +12,9 @@ import {
   UIContext,
   LayoutStyle,
   ComponentVariant,
-  NarrativeMood
+  NarrativeMood,
+  ThreatLevel,
+  ItemRarity
 } from "@/lib/types";
 import React from "react";
 
@@ -71,27 +73,65 @@ function summarizeForUI(
   const maxHp = gameState.character?.maxHp ?? 1;
   const hpPercentage = (hp / maxHp) * 100;
 
-  // Detect if last action was combat-related
-  const actionWasCombat = command.toLowerCase().includes("attack") ||
-    (gameState.message?.toLowerCase().includes("attack") ?? false) ||
-    (gameState.message?.toLowerCase().includes("damage") ?? false);
+  // Get max threat level from monsters
+  const threatOrder: ThreatLevel[] = ["trivial", "normal", "dangerous", "deadly"];
+  const maxThreat = gameState.monsters?.reduce<ThreatLevel | undefined>((max, m) => {
+    if (!m.threat) return max;
+    if (!max) return m.threat;
+    return threatOrder.indexOf(m.threat) > threatOrder.indexOf(max) ? m.threat : max;
+  }, undefined);
 
-  // Check for strong monsters (high HP or damage)
-  const hasStrongMonster = gameState.monsters?.some(m =>
-    m.hp > 30 || m.damage > 10
-  ) ?? false;
+  // Get highest rarity from items in room
+  const rarityOrder: ItemRarity[] = ["common", "uncommon", "rare", "legendary"];
+  const allItems = [...(gameState.roomItems ?? []), ...(gameState.inventory ?? [])];
+  const highestRarity = allItems.reduce<ItemRarity | undefined>((max, item) => {
+    if (!item.rarity) return max;
+    if (!max) return item.rarity;
+    return rarityOrder.indexOf(item.rarity) > rarityOrder.indexOf(max) ? item.rarity : max;
+  }, undefined);
+
+  // Check for new items this turn
+  const newItemsThisTurn = gameState.roomItems?.some(i => i.isNew) ||
+    (gameState.inventoryDelta?.added?.length ?? 0) > 0;
+
+  // Check if any monsters were defeated this turn
+  const monstersDefeatedThisTurn = gameState.combatResult?.enemyDefeated ?? false;
 
   return {
+    // Player state
     hp,
     maxHp,
     isInDanger: hpPercentage <= 30,
+    playerStatus: gameState.character?.status ?? "Healthy",
+
+    // Room state
     roomName: gameState.currentRoom?.name ?? "Unknown",
     roomIsExit: gameState.currentRoom?.isExit ?? false,
+    roomAtmosphere: gameState.currentRoom?.atmosphere,
+    isFirstVisit: gameState.currentRoom?.isFirstVisit,
+
+    // Monsters
     monsterCount: gameState.monsters?.length ?? 0,
-    hasStrongMonster,
-    itemCount: (gameState.roomItems?.length ?? 0) + (gameState.inventory?.length ?? 0),
+    maxThreat,
+    monstersDefeatedThisTurn,
+
+    // Items
+    roomItemCount: gameState.roomItems?.length ?? 0,
+    inventoryCount: gameState.inventory?.length ?? 0,
+    newItemsThisTurn: newItemsThisTurn ?? false,
+    highestRarity,
+
+    // Action context
     lastAction: command,
-    actionWasCombat,
+    event: gameState.event,
+    combatResult: gameState.combatResult,
+
+    // Game context
+    gamePhase: gameState.context?.phase,
+    consecutiveCombat: gameState.context?.consecutiveCombat ?? 0,
+    explorationPct: gameState.context?.explorationPct ?? 0,
+
+    // Status
     message: gameState.message ?? "",
     isVictory: gameState.victory,
     isGameOver: gameState.gameOver,

@@ -11,6 +11,8 @@ export interface CharacterView {
   status: "Healthy" | "Wounded" | "Critical" | "Dead";
 }
 
+export type RoomAtmosphere = "safe" | "tense" | "dangerous" | "mysterious" | "ominous";
+
 export interface RoomView {
   id: string;
   name: string;
@@ -20,7 +22,11 @@ export interface RoomView {
   x: number;
   y: number;
   exits: string[];
+  atmosphere?: RoomAtmosphere;
+  isFirstVisit?: boolean;
 }
+
+export type ThreatLevel = "trivial" | "normal" | "dangerous" | "deadly";
 
 export interface MonsterView {
   id: string;
@@ -29,7 +35,11 @@ export interface MonsterView {
   hp: number;
   maxHp: number;
   damage: number;
+  threat?: ThreatLevel;
+  isDefeated?: boolean;
 }
+
+export type ItemRarity = "common" | "uncommon" | "rare" | "legendary";
 
 export interface ItemView {
   id: string;
@@ -40,6 +50,8 @@ export interface ItemView {
   armor?: number;
   healing?: number;
   isEquipped: boolean;
+  rarity?: ItemRarity;
+  isNew?: boolean;
 }
 
 export interface EquipmentView {
@@ -56,6 +68,49 @@ export interface MapCell {
   exits?: string[];
 }
 
+// Event types for action metadata
+export type EventType = "combat" | "discovery" | "movement" | "interaction" | "death" | "victory";
+
+export interface EventInfo {
+  type: EventType;
+  subtype: string;
+  entities: string[];
+}
+
+// Combat result details
+export interface AttackResult {
+  attackerName: string;
+  targetName: string;
+  damage: number;
+  wasHit: boolean;
+  wasCritical: boolean;
+  remainingHp: number;
+}
+
+export interface EnhancedCombatResult {
+  playerAttack?: AttackResult;
+  enemyAttack?: AttackResult;
+  enemyDefeated: boolean;
+  playerDied: boolean;
+}
+
+// Inventory changes this turn
+export interface InventoryDelta {
+  added?: string[];
+  removed?: string[];
+  used?: string[];
+}
+
+// Game progression context
+export type GamePhase = "early_game" | "mid_game" | "late_game" | "exit";
+
+export interface GameContext {
+  phase: GamePhase;
+  turnsInRoom: number;
+  consecutiveCombat: number;
+  explorationPct: number;
+}
+
 export interface GameStateSnapshot {
   character?: CharacterView;
   currentRoom?: RoomView;
@@ -68,6 +123,11 @@ export interface GameStateSnapshot {
   victory: boolean;
   turnNumber: number;
   message?: string;
+  // Enhanced metadata from backend
+  event?: EventInfo;
+  combatResult?: EnhancedCombatResult;
+  inventoryDelta?: InventoryDelta;
+  context?: GameContext;
 }
 
 // MCP Tool Result from backend
@@ -140,16 +200,40 @@ export type NarrativeMood = "neutral" | "tense" | "triumphant" | "mysterious" | 
 
 // Summarized game context for Phase 2 UI generation (token-optimized)
 export interface UIContext {
+  // Player state
   hp: number;
   maxHp: number;
   isInDanger: boolean;
+  playerStatus: CharacterView["status"];
+
+  // Room state
   roomName: string;
   roomIsExit: boolean;
+  roomAtmosphere?: RoomAtmosphere;
+  isFirstVisit?: boolean;
+
+  // Monsters
   monsterCount: number;
-  hasStrongMonster: boolean;
-  itemCount: number;
+  maxThreat?: ThreatLevel;
+  monstersDefeatedThisTurn: boolean;
+
+  // Items
+  roomItemCount: number;
+  inventoryCount: number;
+  newItemsThisTurn: boolean;
+  highestRarity?: ItemRarity;
+
+  // Action context
   lastAction: string;
-  actionWasCombat: boolean;
+  event?: EventInfo;
+  combatResult?: EnhancedCombatResult;
+
+  // Game context
+  gamePhase?: GamePhase;
+  consecutiveCombat: number;
+  explorationPct: number;
+
+  // Status
   message: string;
   isVictory: boolean;
   isGameOver: boolean;
