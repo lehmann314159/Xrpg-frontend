@@ -3,7 +3,8 @@
 import { useState, useEffect, useCallback, ReactNode } from "react";
 import { useSession, signIn, signOut } from "next-auth/react";
 import { readStreamableValue } from "ai/rsc";
-import { submitCommand } from "./actions";
+import { submitCommand, executeAction } from "./actions";
+import { ActionButtons, GameAction } from "@/components/game/ActionButtons";
 import { useGridStore } from "@/lib/grid-store";
 import { healthCheck } from "@/lib/mcp-client";
 import { CommandInput } from "@/components/game/CommandInput";
@@ -61,6 +62,69 @@ export default function DungeonCrawlerPage() {
     setIsLoading(false);
   }, []);
 
+  // Handle button actions (no Phase 1 AI needed)
+  const handleAction = useCallback(async (action: GameAction) => {
+    // Get API key from localStorage
+    const apiKey = session?.user?.id ? getStoredApiKey(session.user.id) : null;
+    if (!apiKey) {
+      setStreamedUI(
+        <div className="rounded-lg border border-yellow-600 bg-yellow-950/30 p-4">
+          <p className="text-yellow-400">
+            Please add your Anthropic API key in Settings to play.
+          </p>
+        </div>
+      );
+      setShowSettings(true);
+      return;
+    }
+
+    setIsLoading(true);
+    setStreamedUI(<ThinkingIndicator message={`${action.label}...`} />);
+
+    try {
+      const pinnedTypesArray = getPinnedTypes();
+      const { uiNode, gameStateStream } = await executeAction(
+        action.tool,
+        action.args,
+        action.label,
+        pinnedTypesArray,
+        apiKey
+      );
+
+      // Set the streamable UI node directly
+      setStreamedUI(uiNode);
+
+      // Stream the game state updates
+      for await (const state of readStreamableValue(gameStateStream)) {
+        if (state) {
+          setGameState(state);
+        }
+      }
+
+    } catch (error) {
+      console.error("Action error:", error);
+
+      // Check if it's a connection error
+      const connected = await healthCheck();
+      setIsConnected(connected);
+
+      if (!connected) {
+        setStreamedUI(<ConnectionError onRetry={handleRetryConnection} />);
+      } else {
+        setStreamedUI(
+          <div className="rounded-lg border border-red-600 bg-red-950/30 p-4">
+            <p className="text-red-400">
+              Error: {error instanceof Error ? error.message : "An unexpected error occurred"}
+            </p>
+          </div>
+        );
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getPinnedTypes, setGameState, handleRetryConnection, session?.user?.id]);
+
+  // Legacy text command handler (kept for compatibility)
   const handleCommand = useCallback(async (command: string) => {
     if (!command.trim()) return;
 
@@ -298,41 +362,22 @@ export default function DungeonCrawlerPage() {
               <div className="space-y-2">
                 <h2 className="text-xl font-semibold">Welcome, Adventurer!</h2>
                 <p className="text-muted-foreground max-w-md">
-                  Enter a command below to begin your dungeon adventure.
-                  <br />
-                  Try &quot;new game [your name]&quot; to start!
+                  Click &quot;New Game&quot; below to begin your dungeon adventure.
                 </p>
-              </div>
-              <div className="flex flex-wrap gap-2 justify-center text-xs">
-                <Badge variant="outline">new game Hero</Badge>
-                <Badge variant="outline">look</Badge>
-                <Badge variant="outline">go north</Badge>
-                <Badge variant="outline">attack</Badge>
-                <Badge variant="outline">take item</Badge>
-                <Badge variant="outline">inventory</Badge>
-                <Badge variant="outline">map</Badge>
               </div>
             </div>
           )}
         </div>
 
-        {/* Command Input */}
+        {/* Action Buttons */}
         <div className="sticky bottom-0 bg-background/95 backdrop-blur-sm py-4 -mx-4 px-4 border-t">
-          <CommandInput
-            onSubmit={handleCommand}
+          <ActionButtons
+            gameState={gameState}
+            onAction={handleAction}
             disabled={isLoading || !isConnected || !hasApiKey}
-            placeholder={
-              !hasApiKey
-                ? "Add your API key in Settings to play..."
-                : !isConnected
-                ? "Connect to backend first..."
-                : isLoading
-                ? "Processing..."
-                : "Enter a command (e.g., 'new game Hero', 'look', 'go north')..."
-            }
           />
           {isLoading && (
-            <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
               <div className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
               <span>The dungeon master is thinking...</span>
             </div>

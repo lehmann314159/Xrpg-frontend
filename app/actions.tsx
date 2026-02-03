@@ -4,6 +4,7 @@ import { createStreamableUI, createStreamableValue, StreamableValue } from "ai/r
 import { generateText, streamText } from "ai";
 import { createAnthropic } from "@ai-sdk/anthropic";
 import { allTools, extractGameState } from "@/lib/tools";
+import { callTool } from "@/lib/mcp-client";
 import { uiTools, UI_SYSTEM_PROMPT } from "@/lib/ui-tools";
 import {
   GameStateSnapshot,
@@ -644,6 +645,132 @@ Decide how to present this game state to the player. Choose appropriate layout, 
   })();
 
   // Return the streamable UI value (React node) and streams
+  return {
+    uiNode: ui.value,
+    textStream: textStream.value,
+    gameStateStream: gameStateStream.value
+  };
+}
+
+// New action that skips Phase 1 - takes structured commands directly
+export async function executeAction(
+  tool: string,
+  args: Record<string, string>,
+  actionLabel: string,
+  pinnedTypes: ComponentType[],
+  apiKey: string
+): Promise<StreamResult> {
+  // Validate API key format
+  if (!apiKey || !apiKey.startsWith("sk-")) {
+    throw new Error("Invalid API key format");
+  }
+
+  // Create Anthropic client with user's API key
+  const anthropic = createAnthropic({
+    apiKey: apiKey,
+  });
+
+  const ui = createStreamableUI(<ThinkingIndicator />);
+  const textStream = createStreamableValue("");
+  const gameStateStream = createStreamableValue<GameStateSnapshot | null>(null);
+
+  // Run the async logic
+  (async () => {
+    try {
+      // ============================================
+      // DIRECT MCP CALL (No Phase 1 AI needed!)
+      // ============================================
+      const mcpResult = await callTool(tool, args);
+
+      const currentGameState = mcpResult.gameState;
+
+      if (!currentGameState) {
+        ui.done(
+          <div className="rounded-lg border bg-card p-4">
+            <p className="text-sm text-muted-foreground">
+              {mcpResult.content?.[0]?.text || "Action failed"}
+            </p>
+          </div>
+        );
+        textStream.done();
+        gameStateStream.done();
+        return;
+      }
+
+      gameStateStream.update(currentGameState);
+
+      // Show fallback UI while Phase 2 processes
+      ui.update(renderFallbackUI(currentGameState, pinnedTypes));
+
+      // ============================================
+      // PHASE 2: AI-driven UI generation
+      // ============================================
+      try {
+        const uiContext = summarizeForUI(currentGameState, actionLabel, pinnedTypes);
+
+        const contextMessage = `Game Context:
+${JSON.stringify(uiContext, null, 2)}
+
+Available Data:
+- Room: ${currentGameState.currentRoom?.name ?? "none"}
+- Monsters: ${currentGameState.monsters?.map(m => `${m.name} (id: ${m.id})`).join(", ") || "none"}
+- Room Items: ${currentGameState.roomItems?.map(i => `${i.name} (id: ${i.id})`).join(", ") || "none"}
+- Inventory: ${currentGameState.inventory?.map(i => `${i.name} (id: ${i.id})`).join(", ") || "none"}
+- Has Map: ${!!currentGameState.mapGrid}
+- Has Equipment: ${!!(currentGameState.equipment?.weapon || currentGameState.equipment?.armor)}
+
+Decide how to present this game state to the player. Choose appropriate layout, variants, and which components to show.`;
+
+        const uiToolResults: unknown[] = [];
+
+        const phase2Result = streamText({
+          model: anthropic("claude-haiku-4-20250414"),
+          system: UI_SYSTEM_PROMPT,
+          messages: [{ role: "user" as const, content: contextMessage }],
+          tools: uiTools,
+          maxSteps: 8,
+          maxTokens: 500,
+          onStepFinish: async (step) => {
+            if (step.toolResults) {
+              for (const toolResult of step.toolResults) {
+                uiToolResults.push(toolResult.result);
+              }
+            }
+          },
+        });
+
+        for await (const _ of phase2Result.textStream) {
+          // Discard text output
+        }
+
+        const uiComponents = extractUIComponents(uiToolResults);
+
+        if (uiComponents.length > 0) {
+          ui.done(renderUIFromComponents(uiComponents, currentGameState));
+        } else {
+          ui.done(renderFallbackUI(currentGameState, pinnedTypes));
+        }
+      } catch (phase2Error) {
+        console.error("Phase 2 UI generation failed:", phase2Error);
+        ui.done(renderFallbackUI(currentGameState, pinnedTypes));
+      }
+
+      textStream.done();
+      gameStateStream.done();
+    } catch (error) {
+      console.error("Action error:", error);
+      ui.done(
+        <div className="rounded-lg border border-red-600 bg-red-950/30 p-4">
+          <p className="text-red-400">
+            Error: {error instanceof Error ? error.message : "Unknown error"}
+          </p>
+        </div>
+      );
+      textStream.done();
+      gameStateStream.done();
+    }
+  })();
+
   return {
     uiNode: ui.value,
     textStream: textStream.value,
