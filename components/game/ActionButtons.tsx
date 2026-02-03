@@ -16,6 +16,7 @@ import {
   CheckCircle,
   PlayCircle,
 } from "lucide-react";
+import { FocusType } from "./FocusView";
 
 // Structured action that can be executed directly
 export interface GameAction {
@@ -27,6 +28,7 @@ export interface GameAction {
 interface ActionButtonsProps {
   gameState: GameStateSnapshot | null;
   onAction: (action: GameAction) => void;
+  onFocus?: (focusType: FocusType) => void;
   disabled?: boolean;
   className?: string;
 }
@@ -46,6 +48,7 @@ function Divider() {
 export function ActionButtons({
   gameState,
   onAction,
+  onFocus,
   disabled,
   className,
 }: ActionButtonsProps) {
@@ -106,12 +109,12 @@ export function ActionButtons({
     <div className={cn("space-y-2", className)}>
       {/* Single row of all buttons with dividers */}
       <div className="flex flex-wrap items-center gap-2">
-        {/* Actions group */}
+        {/* Focus actions group - these show detailed views */}
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onAction({ tool: "look", args: {}, label: "Look" })}
-          disabled={disabled}
+          onClick={() => onFocus?.("look")}
+          disabled={disabled || !onFocus}
           className="gap-1"
         >
           <Eye className="h-4 w-4" />
@@ -120,8 +123,8 @@ export function ActionButtons({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onAction({ tool: "stats", args: {}, label: "Stats" })}
-          disabled={disabled}
+          onClick={() => onFocus?.("stats")}
+          disabled={disabled || !onFocus}
           className="gap-1"
         >
           <User className="h-4 w-4" />
@@ -130,8 +133,8 @@ export function ActionButtons({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onAction({ tool: "inventory", args: {}, label: "Inventory" })}
-          disabled={disabled}
+          onClick={() => onFocus?.("inventory")}
+          disabled={disabled || !onFocus}
           className="gap-1"
         >
           <Package className="h-4 w-4" />
@@ -140,8 +143,8 @@ export function ActionButtons({
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onAction({ tool: "map", args: {}, label: "Map" })}
-          disabled={disabled}
+          onClick={() => onFocus?.("map")}
+          disabled={disabled || !onFocus}
           className="gap-1"
         >
           <Map className="h-4 w-4" />

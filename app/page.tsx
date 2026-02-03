@@ -5,6 +5,7 @@ import { useSession, signIn, signOut } from "next-auth/react";
 import { readStreamableValue } from "ai/rsc";
 import { submitCommand, executeAction } from "./actions";
 import { ActionButtons, GameAction } from "@/components/game/ActionButtons";
+import { FocusView, FocusType } from "@/components/game/FocusView";
 import { useGridStore } from "@/lib/grid-store";
 import { healthCheck } from "@/lib/mcp-client";
 import { CommandInput } from "@/components/game/CommandInput";
@@ -23,6 +24,7 @@ export default function DungeonCrawlerPage() {
   const [streamedUI, setStreamedUI] = useState<ReactNode>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [hasApiKey, setHasApiKey] = useState(false);
+  const [focusMode, setFocusMode] = useState<FocusType | null>(null);
 
   const {
     gameState,
@@ -62,8 +64,20 @@ export default function DungeonCrawlerPage() {
     setIsLoading(false);
   }, []);
 
+  // Handle focus mode
+  const handleFocus = useCallback((focusType: FocusType) => {
+    setFocusMode(focusType);
+  }, []);
+
+  const handleBackFromFocus = useCallback(() => {
+    setFocusMode(null);
+  }, []);
+
   // Handle button actions (no Phase 1 AI needed)
   const handleAction = useCallback(async (action: GameAction) => {
+    // Clear focus mode when taking a game action
+    setFocusMode(null);
+
     // Get API key from localStorage
     const apiKey = session?.user?.id ? getStoredApiKey(session.user.id) : null;
     if (!apiKey) {
@@ -354,6 +368,12 @@ export default function DungeonCrawlerPage() {
                 Open Settings
               </Button>
             </div>
+          ) : focusMode && gameState ? (
+            <FocusView
+              focusType={focusMode}
+              gameState={gameState}
+              onBack={handleBackFromFocus}
+            />
           ) : streamedUI ? (
             streamedUI
           ) : (
@@ -374,6 +394,7 @@ export default function DungeonCrawlerPage() {
           <ActionButtons
             gameState={gameState}
             onAction={handleAction}
+            onFocus={handleFocus}
             disabled={isLoading || !isConnected || !hasApiKey}
           />
           {isLoading && (
