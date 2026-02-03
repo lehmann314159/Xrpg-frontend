@@ -12,8 +12,8 @@ const layoutStyles: Record<LayoutStyle, string> = {
   // Standard: 3-column responsive grid for balanced exploration
   standard: "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4",
 
-  // Focused: 2-column layout for combat - main content + sidebar
-  focused: "grid grid-cols-1 lg:grid-cols-[2fr_1fr] gap-4",
+  // Focused: 2-column layout for combat - equal columns
+  focused: "grid grid-cols-1 lg:grid-cols-2 gap-4",
 
   // Cinematic: Single column, centered, max-width for dramatic moments
   cinematic: "flex flex-col items-center gap-4 max-w-2xl mx-auto",
