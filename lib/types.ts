@@ -242,7 +242,7 @@ export interface UIContext {
 
 // UI component that has been rendered by AI
 export interface UIComponent {
-  type: "layout" | "notification" | "room" | "player" | "monster" | "item" | "map" | "equipment" | "inventory" | "narrative";
+  type: "layout" | "notification" | "room" | "player" | "monster" | "item" | "map" | "equipment" | "inventory" | "narrative" | "combatResult";
   variant?: ComponentVariant;
   mood?: NarrativeMood;
   emphasis?: boolean;

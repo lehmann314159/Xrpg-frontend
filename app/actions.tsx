@@ -31,6 +31,7 @@ import { ThinkingIndicator } from "@/components/game/ThinkingIndicator";
 import { InventoryPanel } from "@/components/game/InventoryPanel";
 import { GameLayout } from "@/components/game/GameLayout";
 import { NarrativeText } from "@/components/game/NarrativeText";
+import { CombatResult } from "@/components/game/CombatResult";
 
 // Phase 1: Command interpretation system prompt
 const COMMAND_SYSTEM_PROMPT = `You are a command interpreter for a dungeon crawler game. Parse user commands and call the appropriate tool. Do NOT add any narrative or description - just call tools silently.
@@ -308,6 +309,24 @@ function renderUIFromComponents(
         }
         break;
       }
+
+      case "combatResult": {
+        if (gameState.combatResult) {
+          // CombatResult only supports standard, dramatic, compact
+          const combatVariant = (variant === "standard" || variant === "dramatic" || variant === "compact")
+            ? variant
+            : "standard";
+          renderedNodes.push(
+            <div key={key} className="rounded-lg border border-orange-600/30 bg-card p-4">
+              <h3 className="text-xs font-medium text-orange-400 uppercase tracking-wide mb-3">
+                Combat Results
+              </h3>
+              <CombatResult result={gameState.combatResult} variant={combatVariant} />
+            </div>
+          );
+        }
+        break;
+      }
     }
   }
 
@@ -325,8 +344,13 @@ function determineLayoutStyle(gameState: GameStateSnapshot): LayoutStyle {
     return "cinematic";
   }
 
-  // Focused for combat
+  // Focused for active combat
   if (gameState.monsters && gameState.monsters.length > 0) {
+    return "focused";
+  }
+
+  // Focused for recent combat results (enemy just defeated)
+  if (gameState.combatResult) {
     return "focused";
   }
 
@@ -349,8 +373,20 @@ function renderFallbackUI(
   const components: React.ReactNode[] = [];
   const layoutStyle = determineLayoutStyle(gameState);
 
-  // Add notification for game messages
-  if (gameState.message) {
+  // Combat results (show first for prominence)
+  if (gameState.combatResult) {
+    components.push(
+      <div key="combat-result" className="rounded-lg border border-orange-600/30 bg-card p-4">
+        <h3 className="text-xs font-medium text-orange-400 uppercase tracking-wide mb-3">
+          Combat Results
+        </h3>
+        <CombatResult result={gameState.combatResult} />
+      </div>
+    );
+  }
+
+  // Add notification for game messages (if no combat result, to avoid duplication)
+  if (gameState.message && !gameState.combatResult) {
     components.push(
       <Notification
         key="message"

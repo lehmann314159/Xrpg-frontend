@@ -196,6 +196,21 @@ export const uiRenderNarrative = tool({
   },
 });
 
+export const uiRenderCombatResult = tool({
+  description: "Render combat results showing what happened in the last combat exchange. Shows player attack, enemy attack, damage dealt/received, criticals, and defeats. ALWAYS use this after combat actions.",
+  parameters: z.object({
+    variant: variantSchema.optional().describe("Visual variant: standard (full details), dramatic (emphasized for close calls), compact (minimal)"),
+  }),
+  execute: async ({ variant }): Promise<UIToolResult> => {
+    return {
+      component: {
+        type: "combatResult",
+        variant: (variant || "standard") as ComponentVariant,
+      },
+    };
+  },
+});
+
 export const uiComplete = tool({
   description: "Signal that UI rendering is complete. Call this after rendering all desired components.",
   parameters: z.object({}),
@@ -216,6 +231,7 @@ export const uiTools = {
   ui_render_equipment: uiRenderEquipment,
   ui_render_inventory: uiRenderInventory,
   ui_render_narrative: uiRenderNarrative,
+  ui_render_combat_result: uiRenderCombatResult,
   ui_complete: uiComplete,
 };
 
@@ -271,8 +287,8 @@ export const UI_SYSTEM_PROMPT = `You are a dungeon master presenting game state 
 
 ## Rules
 1. ALWAYS call ui_set_layout FIRST
-2. ALWAYS show the message as a notification - it contains critical game info
-3. Use event.type and combatResult to determine notification type and urgency
+2. ALWAYS call ui_render_combat_result when combatResult is present - this shows attack details
+3. Use ui_render_notification for important game messages
 4. Match variant selection to threat/atmosphere/rarity when available
 5. Use ui_render_narrative for flavor text matching the mood
 6. Maximum 6 components per response (excluding layout)
@@ -300,11 +316,20 @@ export const UI_SYSTEM_PROMPT = `You are a dungeon master presenting game state 
 Context: event.type="combat", combatResult.playerAttack.wasCritical=true, monstersDefeatedThisTurn=true
 
 1. ui_set_layout({ style: "focused" })
-2. ui_render_notification({ notificationType: "combat", title: "CRITICAL HIT!", message: "[exact message from context]", urgency: "high" })
-3. ui_render_notification({ notificationType: "success", title: "Victory!", message: "The enemy has been defeated!", urgency: "normal" })
+2. ui_render_combat_result({ variant: "dramatic" })  // Shows attack details, damage, critical hit
+3. ui_render_player({ variant: "standard" })
+4. ui_render_room({ variant: "standard" })
+5. ui_complete()
+
+## Example: Combat (enemy still alive)
+
+Context: event.type="combat", combatResult present, monsterCount > 0
+
+1. ui_set_layout({ style: "focused" })
+2. ui_render_combat_result({ variant: "standard" })  // Shows attack exchange
+3. ui_render_monster({ monsterId: "...", variant: "standard" })
 4. ui_render_player({ variant: "standard" })
-5. ui_render_room({ variant: "standard" })
-6. ui_complete()
+5. ui_complete()
 
 ## Example: Entering Ominous Room with Deadly Enemy
 
