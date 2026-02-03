@@ -1,6 +1,6 @@
 import { MapCell, ComponentVariant } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { User, DoorOpen, ArrowUp, ArrowDown, ArrowLeft, ArrowRight } from "lucide-react";
+import { User, DoorOpen } from "lucide-react";
 
 interface DungeonMapProps {
   mapGrid: MapCell[][];
@@ -16,12 +16,31 @@ const statusColors: Record<MapCell["status"], string> = {
   exit: "bg-green-900/50 border-green-600",
 };
 
-const exitArrows: Record<string, typeof ArrowUp> = {
-  north: ArrowUp,
-  south: ArrowDown,
-  east: ArrowRight,
-  west: ArrowLeft,
-};
+// Doorway connector component
+function Doorway({ direction, visible }: { direction: "horizontal" | "vertical"; visible: boolean }) {
+  if (!visible) {
+    return direction === "horizontal" ? (
+      <div className="w-3 h-10" /> // Empty horizontal spacer
+    ) : (
+      <div className="h-3 w-10" /> // Empty vertical spacer
+    );
+  }
+
+  return direction === "horizontal" ? (
+    <div className="w-3 h-10 flex items-center justify-center">
+      <div className="w-2 h-6 bg-amber-800 border border-amber-600 rounded-sm" />
+    </div>
+  ) : (
+    <div className="h-3 w-10 flex items-center justify-center">
+      <div className="h-2 w-6 bg-amber-800 border border-amber-600 rounded-sm" />
+    </div>
+  );
+}
+
+// Check if a cell has a specific exit
+function hasExit(cell: MapCell | undefined, direction: string): boolean {
+  return cell?.exits?.includes(direction) ?? false;
+}
 
 export function DungeonMap({ mapGrid, variant = "standard", className }: DungeonMapProps) {
   if (!mapGrid || mapGrid.length === 0) {
@@ -35,94 +54,134 @@ export function DungeonMap({ mapGrid, variant = "standard", className }: Dungeon
   // Reverse rows so north (higher Y) is at the top
   const flippedGrid = [...mapGrid].reverse();
 
-  // Minimal variant - smaller cells, no legend
+  // Get cell at coordinates (accounting for flipped grid)
+  const getCell = (x: number, flippedY: number): MapCell | undefined => {
+    return flippedGrid[flippedY]?.[x];
+  };
+
+  // Minimal variant - smaller cells, simple connectors
   if (variant === "minimal") {
     return (
-      <div className={cn("flex flex-col gap-0.5", className)}>
-        {flippedGrid.map((row, idx) => (
-          <div key={idx} className="flex gap-0.5 justify-center">
-            {row.map((cell) => (
-              <div
-                key={`${cell.x}-${cell.y}`}
-                className={cn(
-                  "relative w-6 h-6 rounded-sm border flex items-center justify-center",
-                  statusColors[cell.status]
-                )}
-              >
-                {cell.hasPlayer && <User className="h-3 w-3 text-primary" />}
-                {cell.status === "exit" && !cell.hasPlayer && (
-                  <DoorOpen className="h-2.5 w-2.5 text-green-400" />
-                )}
-                {cell.status === "visited" && !cell.hasPlayer && (
-                  <div className="w-1 h-1 rounded-full bg-muted-foreground/50" />
-                )}
+      <div className={cn("flex flex-col items-center", className)}>
+        {flippedGrid.map((row, rowIdx) => (
+          <div key={`row-${rowIdx}`}>
+            {/* Room row with horizontal connectors */}
+            <div className="flex items-center">
+              {row.map((cell, colIdx) => (
+                <div key={`cell-${colIdx}`} className="flex items-center">
+                  {/* Room cell */}
+                  <div
+                    className={cn(
+                      "relative w-6 h-6 rounded-sm border flex items-center justify-center",
+                      statusColors[cell.status]
+                    )}
+                  >
+                    {cell.hasPlayer && <User className="h-3 w-3 text-primary" />}
+                    {cell.status === "exit" && !cell.hasPlayer && (
+                      <DoorOpen className="h-2.5 w-2.5 text-green-400" />
+                    )}
+                  </div>
+                  {/* Horizontal connector (east) */}
+                  {colIdx < row.length - 1 && (
+                    <div className="w-1.5 h-6 flex items-center justify-center">
+                      {hasExit(cell, "east") && (
+                        <div className="w-1.5 h-3 bg-amber-800 rounded-sm" />
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+            {/* Vertical connectors row */}
+            {rowIdx < flippedGrid.length - 1 && (
+              <div className="flex">
+                {row.map((cell, colIdx) => (
+                  <div key={`vconn-${colIdx}`} className="flex">
+                    <div className="w-6 h-1.5 flex items-center justify-center">
+                      {hasExit(cell, "south") && (
+                        <div className="w-3 h-1.5 bg-amber-800 rounded-sm" />
+                      )}
+                    </div>
+                    {colIdx < row.length - 1 && <div className="w-1.5 h-1.5" />}
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </div>
         ))}
       </div>
     );
   }
 
-  // Standard variant (default)
+  // Standard variant (default) with doorway connectors
   return (
-    <div className={cn("flex flex-col gap-1", className)}>
-      {flippedGrid.map((row, idx) => (
-        <div key={idx} className="flex gap-1 justify-center">
-          {row.map((cell) => (
-            <div
-              key={`${cell.x}-${cell.y}`}
-              className={cn(
-                "relative w-10 h-10 rounded border flex items-center justify-center transition-all",
-                statusColors[cell.status]
-              )}
-              title={
-                cell.roomId
-                  ? `Room at (${cell.x}, ${cell.y}) - ${cell.status}`
-                  : "Unexplored"
-              }
-            >
-              {/* Player marker */}
-              {cell.hasPlayer && (
-                <User className="h-5 w-5 text-primary" />
-              )}
+    <div className={cn("flex flex-col items-center", className)}>
+      {flippedGrid.map((row, rowIdx) => (
+        <div key={`row-${rowIdx}`}>
+          {/* Room row with horizontal connectors */}
+          <div className="flex items-center">
+            {row.map((cell, colIdx) => (
+              <div key={`cell-${colIdx}`} className="flex items-center">
+                {/* Room cell */}
+                <div
+                  className={cn(
+                    "relative w-10 h-10 rounded border flex items-center justify-center transition-all",
+                    statusColors[cell.status]
+                  )}
+                  title={
+                    cell.roomId
+                      ? `Room at (${cell.x}, ${cell.y}) - ${cell.status}`
+                      : "Unexplored"
+                  }
+                >
+                  {/* Player marker */}
+                  {cell.hasPlayer && (
+                    <User className="h-5 w-5 text-primary" />
+                  )}
 
-              {/* Exit marker */}
-              {cell.status === "exit" && !cell.hasPlayer && (
-                <DoorOpen className="h-4 w-4 text-green-400" />
-              )}
+                  {/* Exit marker */}
+                  {cell.status === "exit" && !cell.hasPlayer && (
+                    <DoorOpen className="h-4 w-4 text-green-400" />
+                  )}
 
-              {/* Exit direction indicators for visited rooms */}
-              {cell.status === "visited" && cell.exits && !cell.hasPlayer && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+                  {/* Dot for visited rooms */}
+                  {cell.status === "visited" && !cell.hasPlayer && (
+                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/50" />
+                  )}
                 </div>
-              )}
 
-              {/* Show exit arrows on current cell */}
-              {cell.hasPlayer && cell.exits && (
-                <>
-                  {cell.exits.includes("north") && (
-                    <ArrowUp className="absolute -top-0.5 h-2 w-2 text-primary/70" />
-                  )}
-                  {cell.exits.includes("south") && (
-                    <ArrowDown className="absolute -bottom-0.5 h-2 w-2 text-primary/70" />
-                  )}
-                  {cell.exits.includes("east") && (
-                    <ArrowRight className="absolute -right-0.5 h-2 w-2 text-primary/70" />
-                  )}
-                  {cell.exits.includes("west") && (
-                    <ArrowLeft className="absolute -left-0.5 h-2 w-2 text-primary/70" />
-                  )}
-                </>
-              )}
+                {/* Horizontal connector (east doorway) */}
+                {colIdx < row.length - 1 && (
+                  <Doorway
+                    direction="horizontal"
+                    visible={hasExit(cell, "east")}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Vertical connectors row (south doorways) */}
+          {rowIdx < flippedGrid.length - 1 && (
+            <div className="flex justify-center">
+              {row.map((cell, colIdx) => (
+                <div key={`vconn-${colIdx}`} className="flex items-center">
+                  <div className="w-10 h-3 flex items-center justify-center">
+                    {hasExit(cell, "south") && (
+                      <div className="h-2 w-6 bg-amber-800 border border-amber-600 rounded-sm" />
+                    )}
+                  </div>
+                  {/* Spacer for horizontal connector column */}
+                  {colIdx < row.length - 1 && <div className="w-3 h-3" />}
+                </div>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       ))}
 
       {/* Legend */}
-      <div className="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground justify-center">
+      <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted-foreground justify-center">
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded bg-primary/30 border border-primary" />
           <span>Current</span>
@@ -134,6 +193,10 @@ export function DungeonMap({ mapGrid, variant = "standard", className }: Dungeon
         <div className="flex items-center gap-1">
           <div className="w-3 h-3 rounded bg-green-900/50 border border-green-600" />
           <span>Exit</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-3 h-2 bg-amber-800 border border-amber-600 rounded-sm" />
+          <span>Doorway</span>
         </div>
       </div>
     </div>
