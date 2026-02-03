@@ -149,28 +149,31 @@ export function ActionButtons({
                 Movement
               </div>
               <div className="flex flex-wrap gap-2">
-                {exits.map((direction) => {
-                  const Icon = directionIcons[direction] || ArrowUp;
-                  return (
-                    <Button
-                      key={direction}
-                      variant="secondary"
-                      size="sm"
-                      onClick={() =>
-                        onAction({
-                          tool: "move",
-                          args: { direction },
-                          label: `Go ${direction}`,
-                        })
-                      }
-                      disabled={disabled}
-                      className="gap-1 capitalize"
-                    >
-                      <Icon className="h-4 w-4" />
-                      {direction}
-                    </Button>
-                  );
-                })}
+                {/* Fixed order: West, North, South, East */}
+                {["west", "north", "south", "east"]
+                  .filter((dir) => exits.includes(dir))
+                  .map((direction) => {
+                    const Icon = directionIcons[direction] || ArrowUp;
+                    return (
+                      <Button
+                        key={direction}
+                        variant="secondary"
+                        size="sm"
+                        onClick={() =>
+                          onAction({
+                            tool: "move",
+                            args: { direction },
+                            label: `Go ${direction}`,
+                          })
+                        }
+                        disabled={disabled}
+                        className="gap-1 capitalize"
+                      >
+                        <Icon className="h-4 w-4" />
+                        {direction}
+                      </Button>
+                    );
+                  })}
               </div>
             </div>
           )}
