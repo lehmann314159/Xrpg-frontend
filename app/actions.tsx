@@ -525,7 +525,7 @@ export async function submitCommand(
       ];
 
       const phase1Result = streamText({
-        model: anthropic("claude-sonnet-4-20250514"),
+        model: anthropic("claude-haiku-4-20250414"),
         system: COMMAND_SYSTEM_PROMPT,
         messages,
         tools: allTools,
@@ -592,7 +592,7 @@ Decide how to present this game state to the player. Choose appropriate layout, 
         const uiToolResults: unknown[] = [];
 
         const phase2Result = streamText({
-          model: anthropic("claude-sonnet-4-20250514"),
+          model: anthropic("claude-haiku-4-20250414"),
           system: UI_SYSTEM_PROMPT,
           messages: [{ role: "user" as const, content: contextMessage }],
           tools: uiTools,
