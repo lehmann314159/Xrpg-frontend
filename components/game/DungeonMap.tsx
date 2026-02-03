@@ -16,7 +16,7 @@ const statusColors: Record<MapCell["status"], string> = {
   exit: "bg-green-900/50 border-green-600",
 };
 
-// Doorway connector component
+// Doorway connector component (thin version)
 function Doorway({ direction, visible }: { direction: "horizontal" | "vertical"; visible: boolean }) {
   if (!visible) {
     return direction === "horizontal" ? (
@@ -28,13 +28,18 @@ function Doorway({ direction, visible }: { direction: "horizontal" | "vertical";
 
   return direction === "horizontal" ? (
     <div className="w-3 h-10 flex items-center justify-center">
-      <div className="w-2 h-6 bg-amber-800 border border-amber-600 rounded-sm" />
+      <div className="w-0.5 h-2 bg-amber-700" />
     </div>
   ) : (
     <div className="h-3 w-10 flex items-center justify-center">
-      <div className="h-2 w-6 bg-amber-800 border border-amber-600 rounded-sm" />
+      <div className="h-0.5 w-2 bg-amber-700" />
     </div>
   );
+}
+
+// Check if a cell has been explored (visited or current)
+function isExplored(cell: MapCell | undefined): boolean {
+  return cell?.status === "visited" || cell?.status === "current";
 }
 
 // Check if a cell has a specific exit
@@ -81,30 +86,34 @@ export function DungeonMap({ mapGrid, variant = "standard", className }: Dungeon
                       <DoorOpen className="h-2.5 w-2.5 text-green-400" />
                     )}
                   </div>
-                  {/* Horizontal connector (east) */}
+                  {/* Horizontal connector (east) - only show if either room is explored */}
                   {colIdx < row.length - 1 && (
                     <div className="w-1.5 h-6 flex items-center justify-center">
-                      {hasExit(cell, "east") && (
-                        <div className="w-1.5 h-3 bg-amber-800 rounded-sm" />
+                      {hasExit(cell, "east") && (isExplored(cell) || isExplored(row[colIdx + 1])) && (
+                        <div className="w-0.5 h-1 bg-amber-700" />
                       )}
                     </div>
                   )}
                 </div>
               ))}
             </div>
-            {/* Vertical connectors row */}
+            {/* Vertical connectors row - only show if either room is explored */}
             {rowIdx < flippedGrid.length - 1 && (
               <div className="flex">
-                {row.map((cell, colIdx) => (
-                  <div key={`vconn-${colIdx}`} className="flex">
-                    <div className="w-6 h-1.5 flex items-center justify-center">
-                      {hasExit(cell, "south") && (
-                        <div className="w-3 h-1.5 bg-amber-800 rounded-sm" />
-                      )}
+                {row.map((cell, colIdx) => {
+                  const cellBelow = flippedGrid[rowIdx + 1]?.[colIdx];
+                  const showDoorway = hasExit(cell, "south") && (isExplored(cell) || isExplored(cellBelow));
+                  return (
+                    <div key={`vconn-${colIdx}`} className="flex">
+                      <div className="w-6 h-1.5 flex items-center justify-center">
+                        {showDoorway && (
+                          <div className="w-1 h-0.5 bg-amber-700" />
+                        )}
+                      </div>
+                      {colIdx < row.length - 1 && <div className="w-1.5 h-1.5" />}
                     </div>
-                    {colIdx < row.length - 1 && <div className="w-1.5 h-1.5" />}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -150,31 +159,35 @@ export function DungeonMap({ mapGrid, variant = "standard", className }: Dungeon
                   )}
                 </div>
 
-                {/* Horizontal connector (east doorway) */}
+                {/* Horizontal connector (east doorway) - only show if either room is explored */}
                 {colIdx < row.length - 1 && (
                   <Doorway
                     direction="horizontal"
-                    visible={hasExit(cell, "east")}
+                    visible={hasExit(cell, "east") && (isExplored(cell) || isExplored(row[colIdx + 1]))}
                   />
                 )}
               </div>
             ))}
           </div>
 
-          {/* Vertical connectors row (south doorways) */}
+          {/* Vertical connectors row (south doorways) - only show if either room is explored */}
           {rowIdx < flippedGrid.length - 1 && (
             <div className="flex justify-center">
-              {row.map((cell, colIdx) => (
-                <div key={`vconn-${colIdx}`} className="flex items-center">
-                  <div className="w-10 h-3 flex items-center justify-center">
-                    {hasExit(cell, "south") && (
-                      <div className="h-2 w-6 bg-amber-800 border border-amber-600 rounded-sm" />
-                    )}
+              {row.map((cell, colIdx) => {
+                const cellBelow = flippedGrid[rowIdx + 1]?.[colIdx];
+                const showDoorway = hasExit(cell, "south") && (isExplored(cell) || isExplored(cellBelow));
+                return (
+                  <div key={`vconn-${colIdx}`} className="flex items-center">
+                    <div className="w-10 h-3 flex items-center justify-center">
+                      {showDoorway && (
+                        <div className="h-0.5 w-2 bg-amber-700" />
+                      )}
+                    </div>
+                    {/* Spacer for horizontal connector column */}
+                    {colIdx < row.length - 1 && <div className="w-3 h-3" />}
                   </div>
-                  {/* Spacer for horizontal connector column */}
-                  {colIdx < row.length - 1 && <div className="w-3 h-3" />}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -195,7 +208,7 @@ export function DungeonMap({ mapGrid, variant = "standard", className }: Dungeon
           <span>Exit</span>
         </div>
         <div className="flex items-center gap-1">
-          <div className="w-3 h-2 bg-amber-800 border border-amber-600 rounded-sm" />
+          <div className="w-2 h-0.5 bg-amber-700" />
           <span>Doorway</span>
         </div>
       </div>
