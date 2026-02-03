@@ -318,12 +318,36 @@ function renderUIFromComponents(
   );
 }
 
+// Determine appropriate layout style based on game context
+function determineLayoutStyle(gameState: GameStateSnapshot): LayoutStyle {
+  // Cinematic for victory, death, or exit room
+  if (gameState.victory || gameState.gameOver) {
+    return "cinematic";
+  }
+
+  // Focused for combat
+  if (gameState.monsters && gameState.monsters.length > 0) {
+    return "focused";
+  }
+
+  // Check for dangerous situations
+  const hp = gameState.character?.hp ?? 100;
+  const maxHp = gameState.character?.maxHp ?? 100;
+  if (hp / maxHp <= 0.3) {
+    return "focused"; // Emphasize player stats when in danger
+  }
+
+  // Standard for exploration
+  return "standard";
+}
+
 // Fallback UI rendering when Phase 2 fails or returns no components
 function renderFallbackUI(
   gameState: GameStateSnapshot,
   pinnedTypes: ComponentType[]
 ): React.ReactNode {
   const components: React.ReactNode[] = [];
+  const layoutStyle = determineLayoutStyle(gameState);
 
   // Add notification for game messages
   if (gameState.message) {
@@ -467,9 +491,9 @@ function renderFallbackUI(
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <GameLayout style={layoutStyle}>
       {components}
-    </div>
+    </GameLayout>
   );
 }
 
@@ -744,14 +768,19 @@ Decide how to present this game state to the player. Choose appropriate layout, 
         }
 
         const uiComponents = extractUIComponents(uiToolResults);
+        console.log(`Phase 2 generated ${uiComponents.length} components:`, uiComponents.map(c => c.type));
 
         if (uiComponents.length > 0) {
+          const layoutComp = uiComponents.find(c => c.type === "layout");
+          console.log(`Layout style: ${layoutComp?.style ?? "default (standard)"}`);
           ui.done(renderUIFromComponents(uiComponents, currentGameState));
         } else {
+          console.log("Phase 2 returned no components, using fallback");
           ui.done(renderFallbackUI(currentGameState, pinnedTypes));
         }
       } catch (phase2Error) {
         console.error("Phase 2 UI generation failed:", phase2Error);
+        console.log("Using fallback UI due to Phase 2 error");
         ui.done(renderFallbackUI(currentGameState, pinnedTypes));
       }
 
